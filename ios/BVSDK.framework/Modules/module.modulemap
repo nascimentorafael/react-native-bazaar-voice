@@ -1,0 +1,6 @@
+framework module BVSDK {
+  umbrella header "BVSDK.h"
+
+  export *
+  module * { export * }
+}

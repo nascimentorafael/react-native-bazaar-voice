@@ -1,6 +1,6 @@
 
 import { NativeModules } from 'react-native';
 
-const { RNBazaarInvoice } = NativeModules;
+const { RNBazaarVoice } = NativeModules;
 
-export default RNBazaarInvoice;
+export default RNBazaarVoice;
