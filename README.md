@@ -9,6 +9,27 @@
 
 `$ react-native link react-native-bazaar-voice`
 
+### After automatic, do Android
+
+	Paste this in your `MainApplication.java`:
+
+	```java
+
+	import com.bazaarvoice.bvandroidsdk.BVLogLevel;
+	import com.bazaarvoice.bvandroidsdk.BVSDK;
+	import com.bazaarvoice.bvandroidsdk.BazaarEnvironment;
+
+	// (...)
+	@Override
+    public void onCreate() {
+		// (...)
+		BVSDK.builder(this, BazaarEnvironment.STAGING)
+					.logLevel(BVLogLevel.ERROR)
+					.dryRunAnalytics(false)
+					.build();
+	}
+	```
+
 ### Manual installation
 
 
