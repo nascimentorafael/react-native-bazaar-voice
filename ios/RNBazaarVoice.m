@@ -1,4 +1,4 @@
-#import "RNBazaarVoice"
+#import "RNBazaarVoice.h"
 #import "RCTConvert.h"
 #import "RCTLog.h"
 #import "RCTUIManager.h"
