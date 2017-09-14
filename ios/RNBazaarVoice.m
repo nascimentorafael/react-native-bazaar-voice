@@ -32,14 +32,12 @@ RCT_EXPORT_METHOD(getProductReviewsWithId:(NSString *)productId andLimit:(int)li
 
 RCT_EXPORT_METHOD(submitReview:(NSDictionary *)review fromProduct:(NSString *)productId andUser:(NSDictionary *)user withResolver:(RCTPromiseResolveBlock)resolve andRejecter:(RCTResponseSenderBlock)reject) {
     
-    //    NSLog(@"BVuser %@",user);
-    //    NSLog(@"BVreview %@",review);
-    
     // User info
     NSString *userNickname = [user objectForKey:@"userNickname"];
     NSString *locale = [user objectForKey:@"locale"];
     NSString *userId = [user objectForKey:@"userId"];
     NSString *userEmail = [user objectForKey:@"userEmail"];
+    NSString *hostedAuthenticationCallback = [user objectForKey:@"hostedAuthenticationCallback"];
     bool sendEmailAlertWhenPublished = [user objectForKey:@"sendEmailAlertWhenPublished"];
     bool agreedToTermsAndConditions = [user objectForKey:@"agreedToTermsAndConditions"];
     
@@ -65,6 +63,7 @@ RCT_EXPORT_METHOD(submitReview:(NSDictionary *)review fromProduct:(NSString *)pr
     bvReview.agreedToTermsAndConditions  = [NSNumber numberWithBool:agreedToTermsAndConditions];
     bvReview.isRecommended = [NSNumber numberWithBool:isRecommended];
     bvReview.hostedAuthenticationEmail = userEmail;
+    bvReview.hostedAuthenticationCallback = hostedAuthenticationCallback;
     [bvReview addRatingQuestion:@"Comfort" value:comfort];
     [bvReview addRatingQuestion:@"Size" value:size];
     [bvReview addRatingQuestion:@"Quality" value:quality];
