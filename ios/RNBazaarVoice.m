@@ -35,9 +35,8 @@ RCT_EXPORT_METHOD(submitReview:(NSDictionary *)review fromProduct:(NSString *)pr
     // User info
     NSString *userNickname = [user objectForKey:@"userNickname"];
     NSString *locale = [user objectForKey:@"locale"];
-    NSString *userId = [user objectForKey:@"userId"];
+    NSString *token = [user objectForKey:@"token"];
     NSString *userEmail = [user objectForKey:@"userEmail"];
-    NSString *hostedAuthenticationCallback = [user objectForKey:@"hostedAuthenticationCallback"];
     bool sendEmailAlertWhenPublished = [user objectForKey:@"sendEmailAlertWhenPublished"];
     bool agreedToTermsAndConditions = [user objectForKey:@"agreedToTermsAndConditions"];
     
@@ -49,21 +48,25 @@ RCT_EXPORT_METHOD(submitReview:(NSDictionary *)review fromProduct:(NSString *)pr
     int rating = [[review valueForKey:@"rating"] intValue];
     int quality = [[review valueForKey:@"quality"] intValue];
     bool isRecommended = [user objectForKey:@"isRecommended"];
+    bool submitReview = [user objectForKey:@"submitReview"];
     
     BVReviewSubmission* bvReview = [[BVReviewSubmission alloc] initWithReviewTitle:title
                                                                         reviewText:text
                                                                             rating:rating
                                                                          productId:productId];
-    bvReview.action = BVSubmissionActionPreview;
+    if (submitReview) {
+        bvReview.action = BVSubmissionActionSubmit;
+    } else {
+        bvReview.action = BVSubmissionActionPreview;
+    }
     bvReview.locale = locale;
     bvReview.userNickname = userNickname;
-    bvReview.user = userId;
+    bvReview.user = token;
     bvReview.userEmail = userEmail;
     bvReview.sendEmailAlertWhenPublished = [NSNumber numberWithBool:sendEmailAlertWhenPublished];
     bvReview.agreedToTermsAndConditions  = [NSNumber numberWithBool:agreedToTermsAndConditions];
     bvReview.isRecommended = [NSNumber numberWithBool:isRecommended];
     bvReview.hostedAuthenticationEmail = userEmail;
-    bvReview.hostedAuthenticationCallback = hostedAuthenticationCallback;
     [bvReview addRatingQuestion:@"Comfort" value:comfort];
     [bvReview addRatingQuestion:@"Size" value:size];
     [bvReview addRatingQuestion:@"Quality" value:quality];
@@ -73,6 +76,7 @@ RCT_EXPORT_METHOD(submitReview:(NSDictionary *)review fromProduct:(NSString *)pr
         resolve(response);
     } failure:^(NSArray * _Nonnull errors) {
         // handle failure appropriately  🚨
+        NSLog(@"%@", errors.description);
         reject(errors);
     }];
 }
@@ -89,4 +93,3 @@ RCT_EXPORT_METHOD(submitReview:(NSDictionary *)review fromProduct:(NSString *)pr
 }
 
 @end
-
