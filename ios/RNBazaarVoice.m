@@ -38,7 +38,6 @@ RCT_EXPORT_METHOD(submitReview:(NSDictionary *)review fromProduct:(NSString *)pr
     NSString *token = [user objectForKey:@"token"];
     NSString *userEmail = [user objectForKey:@"userEmail"];
     bool sendEmailAlertWhenPublished = [user objectForKey:@"sendEmailAlertWhenPublished"];
-    bool agreedToTermsAndConditions = [user objectForKey:@"agreedToTermsAndConditions"];
     
     // Review info
     NSString *title = [review objectForKey:@"title"];
@@ -47,36 +46,34 @@ RCT_EXPORT_METHOD(submitReview:(NSDictionary *)review fromProduct:(NSString *)pr
     int size = [[review valueForKey:@"size"] intValue];
     int rating = [[review valueForKey:@"rating"] intValue];
     int quality = [[review valueForKey:@"quality"] intValue];
+    int width = [[review valueForKey:@"width"] intValue];
     bool isRecommended = [user objectForKey:@"isRecommended"];
-    bool submitReview = [user objectForKey:@"submitReview"];
     
     BVReviewSubmission* bvReview = [[BVReviewSubmission alloc] initWithReviewTitle:title
                                                                         reviewText:text
                                                                             rating:rating
                                                                          productId:productId];
-    if (submitReview) {
-        bvReview.action = BVSubmissionActionSubmit;
-    } else {
-        bvReview.action = BVSubmissionActionPreview;
-    }
+    bvReview.action = BVSubmissionActionSubmit;
     bvReview.locale = locale;
     bvReview.userNickname = userNickname;
     bvReview.user = token;
     bvReview.userEmail = userEmail;
     bvReview.sendEmailAlertWhenPublished = [NSNumber numberWithBool:sendEmailAlertWhenPublished];
-    bvReview.agreedToTermsAndConditions  = [NSNumber numberWithBool:agreedToTermsAndConditions];
     bvReview.isRecommended = [NSNumber numberWithBool:isRecommended];
-    bvReview.hostedAuthenticationEmail = userEmail;
     [bvReview addRatingQuestion:@"Comfort" value:comfort];
     [bvReview addRatingQuestion:@"Size" value:size];
     [bvReview addRatingQuestion:@"Quality" value:quality];
+    [bvReview addRatingQuestion:@"Width" value:width];
     
     [bvReview submit:^(BVReviewSubmissionResponse * _Nonnull response) {
         // review submitted successfully! 🎉
-        resolve(response);
+        if (response.submissionId) {
+            resolve(response);
+        }
+        reject(@[@"Could not find submission ID."]);
     } failure:^(NSArray * _Nonnull errors) {
         // handle failure appropriately  🚨
-        NSLog(@"%@", errors.description);
+        NSLog(@"errors %@", errors.description);
         reject(errors);
     }];
 }
@@ -93,3 +90,4 @@ RCT_EXPORT_METHOD(submitReview:(NSDictionary *)review fromProduct:(NSString *)pr
 }
 
 @end
+
