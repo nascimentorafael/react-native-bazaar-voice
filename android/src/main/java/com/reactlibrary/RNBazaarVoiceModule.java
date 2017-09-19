@@ -109,9 +109,10 @@ public class RNBazaarVoiceModule extends ReactContextBaseJavaModule {
   @ReactMethod public void submitReview(
       ReadableMap review, String productId, ReadableMap user, final Promise promise) {
     ReviewSubmissionRequest.Builder previewSubmissionBuilder =
-        new ReviewSubmissionRequest.Builder(Action.Preview, productId).userNickname(user.getString(
-            "userNickname"))
+        new ReviewSubmissionRequest.Builder(Action.Preview, productId)
+            .userNickname(user.getString("userNickname"))
             .locale(user.getString("locale"))
+            .user(user.getString("token"))
             .userEmail(user.getString("userEmail"))
             .sendEmailAlertWhenPublished(user.getBoolean("sendEmailAlertWhenPublished"))
             .title(review.getString("title"))
