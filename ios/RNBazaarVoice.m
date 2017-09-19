@@ -86,6 +86,8 @@ RCT_EXPORT_METHOD(submitReview:(NSDictionary *)review fromProduct:(NSString *)pr
     [dictionary setObject:review.description forKey:@"description"];
     [dictionary setObject:review.userNickname forKey:@"userNickname"];
     [dictionary setObject:review.reviewText forKey:@"reviewText"];
+    [dictionary setObject:review.submissionTime.description forKey:@"date"];
+    [dictionary setObject:[NSNumber numberWithInteger:review.rating] forKey:@"rating"];
     return dictionary;
 }
 
