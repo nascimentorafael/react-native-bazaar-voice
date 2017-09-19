@@ -16,9 +16,10 @@ RCT_EXPORT_MODULE()
     return dispatch_get_main_queue();
 }
 
-RCT_EXPORT_METHOD(getProductReviewsWithId:(NSString *)productId andLimit:(int)limit andOffset:(int)offset withResolver:(RCTPromiseResolveBlock)resolve andRejecter:(RCTResponseSenderBlock)reject) {
+RCT_EXPORT_METHOD(getProductReviewsWithId:(NSString *)productId andLimit:(int)limit offset:(int)offset andLocale:(NSString*)locale withResolver:(RCTPromiseResolveBlock)resolve andRejecter:(RCTResponseSenderBlock)reject) {
     BVReviewsTableView *reviewsTableView = [BVReviewsTableView new];
     BVReviewsRequest* request = [[BVReviewsRequest alloc] initWithProductId:productId limit:limit offset:offset];
+    [request addFilter:BVReviewFilterTypeContentLocale filterOperator:BVFilterOperatorEqualTo value:locale];
     [reviewsTableView load:request success:^(BVReviewsResponse * _Nonnull response) {
         NSMutableArray *reviews = [NSMutableArray new];
         for (BVReview *review in response.results) {
@@ -26,7 +27,7 @@ RCT_EXPORT_METHOD(getProductReviewsWithId:(NSString *)productId andLimit:(int)li
         }
         resolve(reviews);
     } failure:^(NSArray<NSError *> * _Nonnull errors) {
-        reject(errors);
+        reject(@[@"Error"]);
     }];
 }
 
@@ -49,6 +50,7 @@ RCT_EXPORT_METHOD(submitReview:(NSDictionary *)review fromProduct:(NSString *)pr
     int width = [[review valueForKey:@"width"] intValue];
     bool isRecommended = [user objectForKey:@"isRecommended"];
     
+    
     BVReviewSubmission* bvReview = [[BVReviewSubmission alloc] initWithReviewTitle:title
                                                                         reviewText:text
                                                                             rating:rating
@@ -66,15 +68,13 @@ RCT_EXPORT_METHOD(submitReview:(NSDictionary *)review fromProduct:(NSString *)pr
     [bvReview addRatingQuestion:@"Width" value:width];
     
     [bvReview submit:^(BVReviewSubmissionResponse * _Nonnull response) {
-        // review submitted successfully! 🎉
         if (response.submissionId) {
-            resolve(response);
+            resolve(@[response.submissionId]);
+        } else {
+            reject(@[@"Could not find submission ID."]);
         }
-        reject(@[@"Could not find submission ID."]);
     } failure:^(NSArray * _Nonnull errors) {
-        // handle failure appropriately  🚨
-        NSLog(@"errors %@", errors.description);
-        reject(errors);
+        reject(@[@"Error"]);
     }];
 }
 
@@ -90,4 +90,3 @@ RCT_EXPORT_METHOD(submitReview:(NSDictionary *)review fromProduct:(NSString *)pr
 }
 
 @end
-
