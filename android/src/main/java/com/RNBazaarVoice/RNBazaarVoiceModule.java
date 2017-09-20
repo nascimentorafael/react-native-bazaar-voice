@@ -1,4 +1,4 @@
-package com.reactlibrary;
+package com.RNBazaarVoice;
 
 import android.util.Log;
 import com.bazaarvoice.bvandroidsdk.Action;
