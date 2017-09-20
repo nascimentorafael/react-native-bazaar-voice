@@ -16,13 +16,24 @@ RCT_EXPORT_MODULE()
     return dispatch_get_main_queue();
 }
 
-RCT_EXPORT_METHOD(getUserSubmittedReviews:(NSString *)authorId withLimit:(int)limit withResolver:(RCTPromiseResolveBlock)resolve andRejecter:(RCTResponseSenderBlock)reject) {
+RCT_EXPORT_METHOD(getUserSubmittedReviews:(NSString *)authorId withLimit:(int)limit andLocale:(NSString*)locale withResolver:(RCTPromiseResolveBlock)resolve andRejecter:(RCTResponseSenderBlock)reject) {
     BVAuthorRequest *request = [[BVAuthorRequest alloc] initWithAuthorId:authorId];
     [request includeStatistics:BVAuthorContentTypeReviews];
     [request includeContent:BVAuthorContentTypeReviews limit:limit];
     [request load:^(BVAuthorResponse * _Nonnull response) {
-        BVAuthor *author = response.results[0];
-        resolve([self parseReviews:author.includedReviews]);
+        NSArray *reviews = [NSArray new];
+        if (response.results.count == 0 ) {
+            reviews = @[];
+        } else {
+            BVAuthor *author = response.results[0];
+            if (author.includedReviews == 0) {
+                reviews = @[];
+            } else {
+                reviews = [self filterReviewsByLocale:[self parseReviews:author.includedReviews] andLocale:locale];
+            }
+        }
+        
+        resolve(reviews);
     } failure:^(NSArray * _Nonnull errors) {
         reject(errors);
     }];
@@ -33,7 +44,7 @@ RCT_EXPORT_METHOD(getProductReviewsWithId:(NSString *)productId andLimit:(int)li
     BVReviewsRequest* request = [[BVReviewsRequest alloc] initWithProductId:productId limit:limit offset:offset];
     [request addFilter:BVReviewFilterTypeContentLocale filterOperator:BVFilterOperatorEqualTo value:locale];
     [reviewsTableView load:request success:^(BVReviewsResponse * _Nonnull response) {
-        resolve([self parseReviews:response.results]);
+        resolve([self filterReviewsByLocale:[self parseReviews:response.results] andLocale:locale]);
     } failure:^(NSArray<NSError *> * _Nonnull errors) {
         reject(@[@"Error"]);
     }];
@@ -91,6 +102,16 @@ RCT_EXPORT_METHOD(submitReview:(NSDictionary *)review fromProduct:(NSString *)pr
     return reviews;
 }
 
+-(NSMutableArray *)filterReviewsByLocale:(NSArray*)reviews andLocale:(NSString*)locale {
+    NSMutableArray *filteredReviews = [NSMutableArray new];
+    for (NSDictionary *review in reviews) {
+        if ([[review objectForKey:@"locale"] isEqualToString:locale]) {
+            [filteredReviews addObject:review];
+        }
+    }
+    return filteredReviews;
+}
+
 - (NSMutableDictionary *)jsonFromReview:(BVReview *)review {
     NSMutableDictionary *dictionary = [NSMutableDictionary new];
     [dictionary setValue:review.authorId forKey:@"userUuid"];
@@ -100,6 +121,7 @@ RCT_EXPORT_METHOD(submitReview:(NSDictionary *)review fromProduct:(NSString *)pr
     [dictionary setObject:review.title forKey:@"title"];
     [dictionary setObject:review.userNickname forKey:@"nickname"];
     [dictionary setObject:review.reviewText forKey:@"reviewText"];
+    [dictionary setObject:review.contentLocale forKey:@"locale"];
     
     NSDateFormatter* dateFormatter = [NSDateFormatter new];
     dateFormatter.dateFormat = @"yyyy-MM-dd'T'HH:mm:ssxxx";
@@ -120,3 +142,4 @@ RCT_EXPORT_METHOD(submitReview:(NSDictionary *)review fromProduct:(NSString *)pr
 }
 
 @end
+
