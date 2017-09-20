@@ -16,31 +16,39 @@ RCT_EXPORT_MODULE()
     return dispatch_get_main_queue();
 }
 
+RCT_EXPORT_METHOD(getUserSubmittedReviews:(NSString *)authorId withLimit:(int)limit withResolver:(RCTPromiseResolveBlock)resolve andRejecter:(RCTResponseSenderBlock)reject) {
+    BVAuthorRequest *request = [[BVAuthorRequest alloc] initWithAuthorId:authorId];
+    [request includeStatistics:BVAuthorContentTypeReviews];
+    [request includeContent:BVAuthorContentTypeReviews limit:limit];
+    [request load:^(BVAuthorResponse * _Nonnull response) {
+        BVAuthor *author = response.results[0];
+        resolve([self parseReviews:author.includedReviews]);
+    } failure:^(NSArray * _Nonnull errors) {
+        
+        // Error : (
+        NSLog(@"ERROR loading author: %@", errors.description);
+        reject(errors);
+    }];
+}
+
 RCT_EXPORT_METHOD(getProductReviewsWithId:(NSString *)productId andLimit:(int)limit offset:(int)offset andLocale:(NSString*)locale withResolver:(RCTPromiseResolveBlock)resolve andRejecter:(RCTResponseSenderBlock)reject) {
     BVReviewsTableView *reviewsTableView = [BVReviewsTableView new];
     BVReviewsRequest* request = [[BVReviewsRequest alloc] initWithProductId:productId limit:limit offset:offset];
     [request addFilter:BVReviewFilterTypeContentLocale filterOperator:BVFilterOperatorEqualTo value:locale];
     [reviewsTableView load:request success:^(BVReviewsResponse * _Nonnull response) {
-        NSMutableArray *reviews = [NSMutableArray new];
-        for (BVReview *review in response.results) {
-            [reviews addObject:[self jsonFromReview:review]];
-        }
-        resolve(reviews);
+        resolve([self parseReviews:response.results]);
     } failure:^(NSArray<NSError *> * _Nonnull errors) {
         reject(@[@"Error"]);
     }];
 }
 
 RCT_EXPORT_METHOD(submitReview:(NSDictionary *)review fromProduct:(NSString *)productId andUser:(NSDictionary *)user withResolver:(RCTPromiseResolveBlock)resolve andRejecter:(RCTResponseSenderBlock)reject) {
-    
-    // User info
-    NSString *userNickname = [user objectForKey:@"userNickname"];
+    NSString *nickname = [user objectForKey:@"nickname"];
     NSString *locale = [user objectForKey:@"locale"];
     NSString *token = [user objectForKey:@"token"];
-    NSString *userEmail = [user objectForKey:@"userEmail"];
+    NSString *email = [user objectForKey:@"email"];
     bool sendEmailAlertWhenPublished = [user objectForKey:@"sendEmailAlertWhenPublished"];
     
-    // Review info
     NSString *title = [review objectForKey:@"title"];
     NSString *text = [review objectForKey:@"text"];
     int comfort = [[review valueForKey:@"comfort"] intValue];
@@ -50,23 +58,21 @@ RCT_EXPORT_METHOD(submitReview:(NSDictionary *)review fromProduct:(NSString *)pr
     int width = [[review valueForKey:@"width"] intValue];
     bool isRecommended = [user objectForKey:@"isRecommended"];
     
-    
     BVReviewSubmission* bvReview = [[BVReviewSubmission alloc] initWithReviewTitle:title
                                                                         reviewText:text
                                                                             rating:rating
                                                                          productId:productId];
     bvReview.action = BVSubmissionActionSubmit;
     bvReview.locale = locale;
-    bvReview.userNickname = userNickname;
+    bvReview.userNickname = nickname;
     bvReview.user = token;
-    bvReview.userEmail = userEmail;
+    bvReview.userEmail = email;
     bvReview.sendEmailAlertWhenPublished = [NSNumber numberWithBool:sendEmailAlertWhenPublished];
     bvReview.isRecommended = [NSNumber numberWithBool:isRecommended];
     [bvReview addRatingQuestion:@"Comfort" value:comfort];
     [bvReview addRatingQuestion:@"Size" value:size];
     [bvReview addRatingQuestion:@"Quality" value:quality];
     [bvReview addRatingQuestion:@"Width" value:width];
-    
     [bvReview submit:^(BVReviewSubmissionResponse * _Nonnull response) {
         if (response.submissionId) {
             resolve(@[response.submissionId]);
@@ -78,15 +84,30 @@ RCT_EXPORT_METHOD(submitReview:(NSDictionary *)review fromProduct:(NSString *)pr
     }];
 }
 
+-(NSArray *)parseReviews:(NSArray*)results {
+    NSMutableArray *reviews = [NSMutableArray new];
+    for (BVReview *review in results) {
+        [reviews addObject:[self jsonFromReview:review]];
+    }
+    return reviews;
+}
+
 - (NSMutableDictionary *)jsonFromReview:(BVReview *)review {
     NSMutableDictionary *dictionary = [NSMutableDictionary new];
-    [dictionary setValue:review.authorId forKey:@"authorId"];
+    [dictionary setValue:review.authorId forKey:@"userUuid"];
+    [dictionary setValue:review.identifier forKey:@"reviewId"];
+    [dictionary setValue:review.submissionId forKey:@"submissionId"];
     [dictionary setValue:review.productId forKey:@"productId"];
     [dictionary setObject:review.title forKey:@"title"];
-    [dictionary setObject:review.description forKey:@"description"];
-    [dictionary setObject:review.userNickname forKey:@"userNickname"];
+    [dictionary setObject:review.userNickname forKey:@"nickname"];
     [dictionary setObject:review.reviewText forKey:@"reviewText"];
-    [dictionary setObject:review.submissionTime.description forKey:@"date"];
+    NSDateFormatter* dateFormatter = [NSDateFormatter new];
+    dateFormatter.dateFormat = @"yyyy-MM-dd'T'HH:mm:ssxxx";
+    [dateFormatter setCalendar:[NSCalendar calendarWithIdentifier:NSCalendarIdentifierGregorian]];
+    dateFormatter.locale = [NSLocale localeWithLocaleIdentifier:@"en_US_POSIX"];
+    [dateFormatter stringFromDate:review.submissionTime];
+    
+    [dictionary setObject:[dateFormatter stringFromDate:review.submissionTime] forKey:@"date"];
     [dictionary setObject:[NSNumber numberWithInteger:review.rating] forKey:@"rating"];
     return dictionary;
 }
