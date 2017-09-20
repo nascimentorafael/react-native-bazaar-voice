@@ -21,8 +21,12 @@ RCT_EXPORT_METHOD(getUserSubmittedReviews:(NSString *)authorId withLimit:(int)li
     [request includeStatistics:BVAuthorContentTypeReviews];
     [request includeContent:BVAuthorContentTypeReviews limit:limit];
     [request load:^(BVAuthorResponse * _Nonnull response) {
-        BVAuthor *author = response.results[0];
-        resolve([self parseReviews:author.includedReviews]);
+        NSArray *reviews;
+        if (response.results.count > 0) {
+            BVAuthor *author = response.results[0];
+            reviews = [self parseReviews:author.includedReviews];
+        }
+        resolve(reviews);
     } failure:^(NSArray * _Nonnull errors) {
         reject(errors);
     }];
@@ -120,3 +124,4 @@ RCT_EXPORT_METHOD(submitReview:(NSDictionary *)review fromProduct:(NSString *)pr
 }
 
 @end
+
