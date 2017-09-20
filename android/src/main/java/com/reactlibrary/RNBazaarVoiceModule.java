@@ -1,6 +1,10 @@
 package com.reactlibrary;
 
+import android.util.Log;
 import com.bazaarvoice.bvandroidsdk.Action;
+import com.bazaarvoice.bvandroidsdk.AuthorIncludeType;
+import com.bazaarvoice.bvandroidsdk.AuthorsRequest;
+import com.bazaarvoice.bvandroidsdk.AuthorsResponse;
 import com.bazaarvoice.bvandroidsdk.BVConversationsClient;
 import com.bazaarvoice.bvandroidsdk.BVSDK;
 import com.bazaarvoice.bvandroidsdk.BazaarException;
@@ -19,21 +23,19 @@ import com.facebook.react.bridge.WritableArray;
 import com.facebook.react.bridge.WritableMap;
 import com.google.gson.Gson;
 import java.util.Iterator;
+import java.util.List;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
 public class RNBazaarVoiceModule extends ReactContextBaseJavaModule {
 
-  private final ReactApplicationContext reactContext;
   private final BVConversationsClient client;
-  private final Gson gson;
+  private static final Gson gson = new Gson();
 
   public RNBazaarVoiceModule(ReactApplicationContext reactContext) {
     super(reactContext);
-    this.reactContext = reactContext;
     this.client = new BVConversationsClient.Builder(BVSDK.getInstance()).build();
-    this.gson = new Gson();
   }
 
   private static WritableMap jsonToReact(JSONObject jsonObject) throws JSONException {
@@ -84,8 +86,40 @@ public class RNBazaarVoiceModule extends ReactContextBaseJavaModule {
     return Character.toUpperCase(in.charAt(0)) + in.substring(1);
   }
 
+  private static WritableMap toReact(Object o) throws JSONException {
+    if(o instanceof List) {
+      throw new JSONException("Expected non-list object! Use toReactArray instead!");
+    }
+    return jsonToReact(new JSONObject(gson.toJson(o)));
+  }
+
+  private static WritableArray toReactArray(List list) throws JSONException {
+    return jsonToReact(new JSONArray(gson.toJson(list)));
+  }
+
   @Override public String getName() {
     return "RNBazaarVoice";
+  }
+
+  @ReactMethod public void getUserSubmittedReviews(String authorId, int limit,
+      final Promise promise) {
+       AuthorsRequest request = new AuthorsRequest.Builder(authorId)
+        .addIncludeStatistics(AuthorIncludeType.REVIEWS)
+        .addIncludeContent(AuthorIncludeType.REVIEWS, limit).build();
+    client.prepareCall(request).loadAsync(new ConversationsCallback<AuthorsResponse>() {
+      @Override public void onSuccess(AuthorsResponse response) {
+        try {
+          Log.w("BVSDK", "onSuccess: " + gson.toJson(response));
+          promise.resolve(toReact(response.getResults().get(0)));
+        } catch (JSONException e) {
+          promise.reject(e);
+        }
+      }
+
+      @Override public void onFailure(BazaarException exception) {
+        promise.reject(exception);
+      }
+    });
   }
 
   @ReactMethod public void getProductReviewsWithId(
@@ -94,7 +128,7 @@ public class RNBazaarVoiceModule extends ReactContextBaseJavaModule {
     client.prepareCall(reviewsRequest).loadAsync(new ConversationsCallback<ReviewResponse>() {
       @Override public void onSuccess(ReviewResponse response) {
         try {
-          promise.resolve(jsonToReact(new JSONObject(gson.toJson(response))));
+          promise.resolve(toReact(response.getResults()));
         } catch (JSONException e) {
           promise.reject(e);
         }
@@ -109,9 +143,9 @@ public class RNBazaarVoiceModule extends ReactContextBaseJavaModule {
   @ReactMethod public void submitReview(
       ReadableMap review, String productId, ReadableMap user, final Promise promise) {
     ReviewSubmissionRequest.Builder previewSubmissionBuilder =
-        new ReviewSubmissionRequest.Builder(Action.Preview, productId)
-            .userNickname(user.getString("userNickname"))
+        new ReviewSubmissionRequest.Builder(Action.Submit, productId)
             .locale(user.getString("locale"))
+            .userNickname(user.getString("userNickname"))
             .user(user.getString("token"))
             .userEmail(user.getString("userEmail"))
             .sendEmailAlertWhenPublished(user.getBoolean("sendEmailAlertWhenPublished"))
@@ -133,7 +167,7 @@ public class RNBazaarVoiceModule extends ReactContextBaseJavaModule {
         .loadAsync(new ConversationsCallback<ReviewSubmissionResponse>() {
           @Override public void onSuccess(ReviewSubmissionResponse response) {
             try {
-              promise.resolve(jsonToReact(new JSONObject(gson.toJson(response))));
+              promise.resolve(toReact(response));
             } catch (JSONException e) {
               promise.reject(e);
             }
