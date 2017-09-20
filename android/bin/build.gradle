@@ -12,16 +12,16 @@ apply plugin: 'com.android.library'
 
 android {
   compileSdkVersion 25
-  buildToolsVersion "25.0.0"
+  buildToolsVersion "25.0.2"
 
   defaultConfig {
     minSdkVersion 16
-    targetSdkVersion 22
+    targetSdkVersion 25
     versionCode 1
     versionName "1.0"
   }
   lintOptions {
-    abortOnError true
+    abortOnError false
   }
 }
 
@@ -34,3 +34,4 @@ dependencies {
   compile 'com.bazaarvoice.bvandroidsdk:conversations:6.+'
   compile 'com.google.code.gson:gson:2.8.1'
 }
+  

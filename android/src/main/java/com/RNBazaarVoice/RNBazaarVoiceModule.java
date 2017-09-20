@@ -8,11 +8,13 @@ import com.bazaarvoice.bvandroidsdk.AuthorsResponse;
 import com.bazaarvoice.bvandroidsdk.BVConversationsClient;
 import com.bazaarvoice.bvandroidsdk.BVSDK;
 import com.bazaarvoice.bvandroidsdk.BazaarException;
-import com.bazaarvoice.bvandroidsdk.ConversationsCallback;
+import com.bazaarvoice.bvandroidsdk.EqualityOperator;
+import com.bazaarvoice.bvandroidsdk.ReviewOptions;
 import com.bazaarvoice.bvandroidsdk.ReviewResponse;
 import com.bazaarvoice.bvandroidsdk.ReviewSubmissionRequest;
 import com.bazaarvoice.bvandroidsdk.ReviewSubmissionResponse;
 import com.bazaarvoice.bvandroidsdk.ReviewsRequest;
+import com.bazaarvoice.bvandroidsdk.SecondaryRating;
 import com.facebook.react.bridge.Arguments;
 import com.facebook.react.bridge.Promise;
 import com.facebook.react.bridge.ReactApplicationContext;
@@ -22,6 +24,7 @@ import com.facebook.react.bridge.ReadableMap;
 import com.facebook.react.bridge.WritableArray;
 import com.facebook.react.bridge.WritableMap;
 import com.google.gson.Gson;
+import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import org.json.JSONArray;
@@ -30,8 +33,9 @@ import org.json.JSONObject;
 
 public class RNBazaarVoiceModule extends ReactContextBaseJavaModule {
 
-  private final BVConversationsClient client;
   private static final Gson gson = new Gson();
+  private static final String TAG = "RNBazaarVoiceModule";
+  private final BVConversationsClient client;
 
   public RNBazaarVoiceModule(ReactApplicationContext reactContext) {
     super(reactContext);
@@ -87,7 +91,7 @@ public class RNBazaarVoiceModule extends ReactContextBaseJavaModule {
   }
 
   private static WritableMap toReact(Object o) throws JSONException {
-    if(o instanceof List) {
+    if (o instanceof List) {
       throw new JSONException("Expected non-list object! Use toReactArray instead!");
     }
     return jsonToReact(new JSONObject(gson.toJson(o)));
@@ -101,58 +105,53 @@ public class RNBazaarVoiceModule extends ReactContextBaseJavaModule {
     return "RNBazaarVoice";
   }
 
-  @ReactMethod public void getUserSubmittedReviews(String authorId, int limit,
-      final Promise promise) {
-       AuthorsRequest request = new AuthorsRequest.Builder(authorId)
-        .addIncludeStatistics(AuthorIncludeType.REVIEWS)
-        .addIncludeContent(AuthorIncludeType.REVIEWS, limit).build();
-    client.prepareCall(request).loadAsync(new ConversationsCallback<AuthorsResponse>() {
-      @Override public void onSuccess(AuthorsResponse response) {
-        try {
-          Log.w("BVSDK", "onSuccess: " + gson.toJson(response));
-          promise.resolve(toReact(response.getResults().get(0)));
-        } catch (JSONException e) {
-          promise.reject(e);
-        }
+  @ReactMethod public void getUserSubmittedReviews(
+      String authorId, int limit, final Promise promise) {
+    AuthorsRequest request =
+        new AuthorsRequest.Builder(authorId).addIncludeStatistics(AuthorIncludeType.REVIEWS)
+            .addIncludeContent(AuthorIncludeType.REVIEWS, limit)
+            .build();
+    try {
+      AuthorsResponse response = client.prepareCall(request).loadSync();
+      Log.w("BVSDK", "onSuccess: " + gson.toJson(response));
+      List<SecondaryRating> responseList = new ArrayList<>();
+      if (!response.getResults().isEmpty()) {
+        responseList.addAll(response.getResults().get(0).getSecondaryRatings().values());
       }
-
-      @Override public void onFailure(BazaarException exception) {
-        promise.reject(exception);
-      }
-    });
+      promise.resolve(toReactArray(responseList));
+    } catch (BazaarException | JSONException e) {
+      promise.reject(e);
+    }
   }
 
   @ReactMethod public void getProductReviewsWithId(
-      String productId, int limit, int offset, final Promise promise) {
-    ReviewsRequest reviewsRequest = new ReviewsRequest.Builder(productId, limit, offset).build();
-    client.prepareCall(reviewsRequest).loadAsync(new ConversationsCallback<ReviewResponse>() {
-      @Override public void onSuccess(ReviewResponse response) {
-        try {
-          promise.resolve(toReact(response.getResults()));
-        } catch (JSONException e) {
-          promise.reject(e);
-        }
-      }
-
-      @Override public void onFailure(BazaarException exception) {
-        promise.reject(exception);
-      }
-    });
+      String productId, int limit, int offset, String locale, final Promise promise) {
+    ReviewsRequest reviewsRequest = new ReviewsRequest.Builder(productId,
+        limit,
+        offset).addFilter(ReviewOptions.Filter.ContentLocale, EqualityOperator.EQ, locale).build();
+    try {
+      ReviewResponse response = client.prepareCall(reviewsRequest).loadSync();
+      Log.w(TAG, "onSuccess: " + gson.toJson(response.getResults()));
+      promise.resolve(toReactArray(response.getResults()));
+    } catch (BazaarException | JSONException e) {
+      Log.e(TAG, "onSuccess: ", e);
+      promise.reject(e);
+    }
   }
 
   @ReactMethod public void submitReview(
       ReadableMap review, String productId, ReadableMap user, final Promise promise) {
-    ReviewSubmissionRequest.Builder previewSubmissionBuilder =
-        new ReviewSubmissionRequest.Builder(Action.Submit, productId)
-            .locale(user.getString("locale"))
-            .userNickname(user.getString("userNickname"))
-            .user(user.getString("token"))
-            .userEmail(user.getString("userEmail"))
-            .sendEmailAlertWhenPublished(user.getBoolean("sendEmailAlertWhenPublished"))
-            .title(review.getString("title"))
-            .reviewText("text")
-            .rating(review.getInt("rating"))
-            .isRecommended(review.getBoolean("isRecommended"));
+    ReviewSubmissionRequest.Builder previewSubmissionBuilder = new ReviewSubmissionRequest.Builder(
+        Action.Submit,
+        productId).locale(user.getString("locale"))
+        .userNickname(user.getString("userNickname"))
+        .user(user.getString("token"))
+        .userEmail(user.getString("userEmail"))
+        .sendEmailAlertWhenPublished(user.getBoolean("sendEmailAlertWhenPublished"))
+        .title(review.getString("title"))
+        .reviewText("text")
+        .rating(review.getInt("rating"))
+        .isRecommended(review.getBoolean("isRecommended"));
 
     final String[] additionalReviewIntProperties = new String[] {
         "comfort", "size", "rating", "quality", "width"
@@ -162,20 +161,14 @@ public class RNBazaarVoiceModule extends ReactContextBaseJavaModule {
       previewSubmissionBuilder.addRatingQuestion(ucFirstLetter(addRevKey),
           review.getInt(addRevKey));
     }
-
-    client.prepareCall(previewSubmissionBuilder.build())
-        .loadAsync(new ConversationsCallback<ReviewSubmissionResponse>() {
-          @Override public void onSuccess(ReviewSubmissionResponse response) {
-            try {
-              promise.resolve(toReact(response));
-            } catch (JSONException e) {
-              promise.reject(e);
-            }
-          }
-
-          @Override public void onFailure(BazaarException exception) {
-            promise.reject(exception);
-          }
-        });
+    try {
+      ReviewSubmissionResponse response =
+          client.prepareCall(previewSubmissionBuilder.build()).loadSync();
+      Log.w(TAG, "onSuccess: " + gson.toJson(response));
+      promise.resolve(toReact(response));
+    } catch (BazaarException | JSONException e) {
+      Log.e(TAG, "onSuccess: ", e);
+      promise.reject(e);
+    }
   }
 }
