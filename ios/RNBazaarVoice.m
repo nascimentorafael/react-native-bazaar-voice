@@ -24,9 +24,6 @@ RCT_EXPORT_METHOD(getUserSubmittedReviews:(NSString *)authorId withLimit:(int)li
         BVAuthor *author = response.results[0];
         resolve([self parseReviews:author.includedReviews]);
     } failure:^(NSArray * _Nonnull errors) {
-        
-        // Error : (
-        NSLog(@"ERROR loading author: %@", errors.description);
         reject(errors);
     }];
 }
@@ -47,6 +44,7 @@ RCT_EXPORT_METHOD(submitReview:(NSDictionary *)review fromProduct:(NSString *)pr
     NSString *locale = [user objectForKey:@"locale"];
     NSString *token = [user objectForKey:@"token"];
     NSString *email = [user objectForKey:@"email"];
+    NSString *profilePicture = [user objectForKey:@"profilePicture"];
     bool sendEmailAlertWhenPublished = [user objectForKey:@"sendEmailAlertWhenPublished"];
     
     NSString *title = [review objectForKey:@"title"];
@@ -73,6 +71,7 @@ RCT_EXPORT_METHOD(submitReview:(NSDictionary *)review fromProduct:(NSString *)pr
     [bvReview addRatingQuestion:@"Size" value:size];
     [bvReview addRatingQuestion:@"Quality" value:quality];
     [bvReview addRatingQuestion:@"Width" value:width];
+    [bvReview addAdditionalField:@"profilePicture" value:profilePicture];
     [bvReview submit:^(BVReviewSubmissionResponse * _Nonnull response) {
         if (response.submissionId) {
             resolve(@[response.submissionId]);
@@ -101,14 +100,22 @@ RCT_EXPORT_METHOD(submitReview:(NSDictionary *)review fromProduct:(NSString *)pr
     [dictionary setObject:review.title forKey:@"title"];
     [dictionary setObject:review.userNickname forKey:@"nickname"];
     [dictionary setObject:review.reviewText forKey:@"reviewText"];
+    
     NSDateFormatter* dateFormatter = [NSDateFormatter new];
     dateFormatter.dateFormat = @"yyyy-MM-dd'T'HH:mm:ssxxx";
     [dateFormatter setCalendar:[NSCalendar calendarWithIdentifier:NSCalendarIdentifierGregorian]];
     dateFormatter.locale = [NSLocale localeWithLocaleIdentifier:@"en_US_POSIX"];
-    [dateFormatter stringFromDate:review.submissionTime];
+    NSString *date = [dateFormatter stringFromDate:review.submissionTime];
     
-    [dictionary setObject:[dateFormatter stringFromDate:review.submissionTime] forKey:@"date"];
+    [dictionary setObject:date forKey:@"date"];
     [dictionary setObject:[NSNumber numberWithInteger:review.rating] forKey:@"rating"];
+    
+    NSDictionary *additionalField = review.additionalFields;
+    if ([additionalField objectForKey:@"profilePicture"]) {
+        NSString *profilePicture = [additionalField objectForKey:@"profilePicture"];
+        [dictionary setObject:profilePicture forKey:@"profilePicture"];
+    }
+    
     return dictionary;
 }
 
