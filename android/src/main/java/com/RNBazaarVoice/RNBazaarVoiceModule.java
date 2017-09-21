@@ -9,12 +9,12 @@ import com.bazaarvoice.bvandroidsdk.BVConversationsClient;
 import com.bazaarvoice.bvandroidsdk.BVSDK;
 import com.bazaarvoice.bvandroidsdk.BazaarException;
 import com.bazaarvoice.bvandroidsdk.EqualityOperator;
+import com.bazaarvoice.bvandroidsdk.Review;
 import com.bazaarvoice.bvandroidsdk.ReviewOptions;
 import com.bazaarvoice.bvandroidsdk.ReviewResponse;
 import com.bazaarvoice.bvandroidsdk.ReviewSubmissionRequest;
 import com.bazaarvoice.bvandroidsdk.ReviewSubmissionResponse;
 import com.bazaarvoice.bvandroidsdk.ReviewsRequest;
-import com.bazaarvoice.bvandroidsdk.SecondaryRating;
 import com.facebook.react.bridge.Arguments;
 import com.facebook.react.bridge.Promise;
 import com.facebook.react.bridge.ReactApplicationContext;
@@ -106,17 +106,26 @@ public class RNBazaarVoiceModule extends ReactContextBaseJavaModule {
   }
 
   @ReactMethod public void getUserSubmittedReviews(
-      String authorId, int limit, final Promise promise) {
+      String authorId, int limit, String locale, final Promise promise) {
     AuthorsRequest request =
         new AuthorsRequest.Builder(authorId).addIncludeStatistics(AuthorIncludeType.REVIEWS)
             .addIncludeContent(AuthorIncludeType.REVIEWS, limit)
             .build();
     try {
       AuthorsResponse response = client.prepareCall(request).loadSync();
-      Log.w("BVSDK", "onSuccess: " + gson.toJson(response));
-      List<SecondaryRating> responseList = new ArrayList<>();
+      Log.w(TAG, "getUserSubmittedReviews: " + gson.toJson(response));
+      List<Review> responseList = new ArrayList<>();
       if (!response.getResults().isEmpty()) {
-        responseList.addAll(response.getResults().get(0).getSecondaryRatings().values());
+        responseList.addAll(response.getIncludes().getReviews());
+        Iterator<Review> ratingIterator = responseList.iterator();
+        while (ratingIterator.hasNext()) {
+          Review nextReview = ratingIterator.next();
+          if (nextReview.getContentLocale() == null) {
+            Log.e(TAG, "getUserSubmittedReviews: " + gson.toJson(nextReview));
+          } else if (!nextReview.getContentLocale().equals(locale)) {
+            ratingIterator.remove();
+          }
+        }
       }
       promise.resolve(toReactArray(responseList));
     } catch (BazaarException | JSONException e) {
@@ -131,10 +140,10 @@ public class RNBazaarVoiceModule extends ReactContextBaseJavaModule {
         offset).addFilter(ReviewOptions.Filter.ContentLocale, EqualityOperator.EQ, locale).build();
     try {
       ReviewResponse response = client.prepareCall(reviewsRequest).loadSync();
-      Log.w(TAG, "onSuccess: " + gson.toJson(response.getResults()));
+      Log.w(TAG, "getProductReviewsWithId: " + gson.toJson(response.getResults()));
       promise.resolve(toReactArray(response.getResults()));
     } catch (BazaarException | JSONException e) {
-      Log.e(TAG, "onSuccess: ", e);
+      Log.e(TAG, "getProductReviewsWithId: ", e);
       promise.reject(e);
     }
   }
@@ -164,10 +173,10 @@ public class RNBazaarVoiceModule extends ReactContextBaseJavaModule {
     try {
       ReviewSubmissionResponse response =
           client.prepareCall(previewSubmissionBuilder.build()).loadSync();
-      Log.w(TAG, "onSuccess: " + gson.toJson(response));
+      Log.w(TAG, "submitReview: " + gson.toJson(response));
       promise.resolve(toReact(response));
     } catch (BazaarException | JSONException e) {
-      Log.e(TAG, "onSuccess: ", e);
+      Log.e(TAG, "submitReview: ", e);
       promise.reject(e);
     }
   }
