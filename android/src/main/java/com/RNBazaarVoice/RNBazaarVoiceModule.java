@@ -24,9 +24,12 @@ import com.facebook.react.bridge.ReadableMap;
 import com.facebook.react.bridge.WritableArray;
 import com.facebook.react.bridge.WritableMap;
 import com.google.gson.Gson;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Locale;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -35,6 +38,8 @@ public class RNBazaarVoiceModule extends ReactContextBaseJavaModule {
 
   private static final Gson gson = new Gson();
   private static final String TAG = "RNBazaarVoiceModule";
+  private static SimpleDateFormat simpleDateFormat =
+      new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssSSS", Locale.US);
   private final BVConversationsClient client;
 
   public RNBazaarVoiceModule(ReactApplicationContext reactContext) {
@@ -98,7 +103,41 @@ public class RNBazaarVoiceModule extends ReactContextBaseJavaModule {
   }
 
   private static WritableArray toReactArray(List list) throws JSONException {
-    return jsonToReact(new JSONArray(gson.toJson(list)));
+    return jsonToReact(changeReviewsRafaWay(new JSONArray(gson.toJson(list))));
+  }
+
+  private static JSONArray changeReviewsRafaWay(JSONArray reviews) {
+    for (int i = 0; i < reviews.length(); i++) {
+      JSONObject reviewMap = null;
+      try {
+        reviewMap = reviews.getJSONObject(i);
+        extraName(reviewMap, "AuthorId", "userUuid");
+        extraName(reviewMap, "Id", "reviewId");
+        extraName(reviewMap, "UserNickname", "nickname");
+        extraName(reviewMap, "ContentLocale", "locale");
+        extraName(reviewMap, "SubmissionId", "submissionId");
+        extraName(reviewMap, "ProductId", "productId");
+        extraName(reviewMap, "Title", "title");
+        extraName(reviewMap, "ReviewText", "reviewText");
+        try {
+          reviewMap.put("date",
+              simpleDateFormat.parse(reviewMap.getString("SubmissionTime")).toString());
+        } catch (ParseException e) {
+          extraName(reviewMap, "SubmissionTime", "date");
+        }
+        reviewMap.put("profilePicture",
+            reviewMap.getJSONObject("AdditionalFields").getString("profilePicture"));
+      } catch (JSONException e) {
+        e.printStackTrace();
+      }
+    }
+    return reviews;
+  }
+
+  private static JSONObject extraName(JSONObject bundle, String from, String to)
+      throws JSONException {
+    bundle.put(to, bundle.getString(from));
+    return bundle;
   }
 
   @Override public String getName() {
@@ -153,9 +192,9 @@ public class RNBazaarVoiceModule extends ReactContextBaseJavaModule {
     ReviewSubmissionRequest.Builder previewSubmissionBuilder = new ReviewSubmissionRequest.Builder(
         Action.Submit,
         productId).locale(user.getString("locale"))
-        .userNickname(user.getString("userNickname"))
+        .userNickname(user.getString("nickname"))
         .user(user.getString("token"))
-        .userEmail(user.getString("userEmail"))
+        .userEmail(user.getString("email"))
         .sendEmailAlertWhenPublished(user.getBoolean("sendEmailAlertWhenPublished"))
         .title(review.getString("title"))
         .reviewText("text")
