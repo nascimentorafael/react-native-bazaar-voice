@@ -4,6 +4,7 @@
 #import "RCTUIManager.h"
 #import "RCTUtils.h"
 #import "RCTBridge.h"
+#import "RCTBridgeModule.h"
 @import BVSDK;
 
 @implementation RNBazaarVoice
@@ -50,7 +51,7 @@ RCT_EXPORT_METHOD(getProductReviewsWithId:(NSString *)productId andLimit:(int)li
     }];
 }
 
-RCT_EXPORT_METHOD(submitReview:(NSDictionary *)review fromProduct:(NSString *)productId andUser:(NSDictionary *)user withResolver:(RCTPromiseResolveBlock)resolve andRejecter:(RCTResponseSenderBlock)reject) {
+RCT_EXPORT_METHOD(submitReview:(NSDictionary *)review fromProduct:(NSString *)productId andUser:(NSDictionary *)user withResolver:(RCTPromiseResolveBlock)resolve andRejecter:(RCTResponseErrorBlock)reject) {
     NSString *nickname = [user objectForKey:@"nickname"];
     NSString *locale = [user objectForKey:@"locale"];
     NSString *token = [user objectForKey:@"token"];
@@ -85,12 +86,19 @@ RCT_EXPORT_METHOD(submitReview:(NSDictionary *)review fromProduct:(NSString *)pr
     [bvReview addAdditionalField:@"profilePicture" value:profilePicture];
     [bvReview submit:^(BVReviewSubmissionResponse * _Nonnull response) {
         if (response.submissionId) {
-            resolve(@[response.submissionId]);
+            NSMutableDictionary *result = [NSMutableDictionary new];
+            [result setObject:response.submissionId forKey:@"submissionId"];
+            [result setObject:[NSNumber numberWithBool:YES] forKey:@"success"];
+            resolve(@[result]);
         } else {
-            reject(@[@"Could not find submission ID."]);
+            reject(nil);
         }
     } failure:^(NSArray * _Nonnull errors) {
-        reject(@[@"Error"]);
+        NSError *error = errors[0];
+        NSMutableDictionary *result = [NSMutableDictionary new];
+        [result setObject:[NSNumber numberWithBool:NO] forKey:@"success"];
+        [result setObject:error.localizedDescription forKey:@"error"];
+        resolve(@[result]);
     }];
 }
 
@@ -142,4 +150,3 @@ RCT_EXPORT_METHOD(submitReview:(NSDictionary *)review fromProduct:(NSString *)pr
 }
 
 @end
-
