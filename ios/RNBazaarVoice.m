@@ -83,7 +83,7 @@ RCT_EXPORT_METHOD(submitReview:(NSDictionary *)review fromProduct:(NSString *)pr
     [bvReview addRatingQuestion:@"Size" value:size];
     [bvReview addRatingQuestion:@"Quality" value:quality];
     [bvReview addRatingQuestion:@"Width" value:width];
-    [bvReview addAdditionalField:@"profilePicture" value:profilePicture];
+    [bvReview addAdditionalField:@"Avatar" value:profilePicture];
     [bvReview submit:^(BVReviewSubmissionResponse * _Nonnull response) {
         NSMutableDictionary *result = [NSMutableDictionary new];
         if (response.submissionId) {
@@ -96,6 +96,7 @@ RCT_EXPORT_METHOD(submitReview:(NSDictionary *)review fromProduct:(NSString *)pr
             resolve(result);
         }
     } failure:^(NSArray * _Nonnull errors) {
+        // You can check the error codes at: https://developer.bazaarvoice.com/conversations-api/reference/v5.4-prr/reviews/review-submission
         NSError *error = errors[0];
         NSMutableDictionary *result = [NSMutableDictionary new];
         [result setObject:[NSNumber numberWithBool:NO] forKey:@"success"];
@@ -122,6 +123,7 @@ RCT_EXPORT_METHOD(submitReview:(NSDictionary *)review fromProduct:(NSString *)pr
     return filteredReviews;
 }
 
+
 - (NSMutableDictionary *)jsonFromReview:(BVReview *)review {
     NSMutableDictionary *dictionary = [NSMutableDictionary new];
     [dictionary setValue:review.authorId forKey:@"userUuid"];
@@ -141,11 +143,13 @@ RCT_EXPORT_METHOD(submitReview:(NSDictionary *)review fromProduct:(NSString *)pr
     
     [dictionary setObject:date forKey:@"date"];
     [dictionary setObject:[NSNumber numberWithInteger:review.rating] forKey:@"rating"];
+    [dictionary setObject:@[review.additionalFields] forKey:@"additionalFields"];
     
     NSDictionary *additionalField = review.additionalFields;
-    if ([additionalField objectForKey:@"profilePicture"]) {
-        NSString *profilePicture = [additionalField objectForKey:@"profilePicture"];
-        [dictionary setObject:profilePicture forKey:@"profilePicture"];
+    if ([additionalField objectForKey:@"Avatar"]) {
+        NSDictionary *avatar = [additionalField objectForKey:@"Avatar"];
+        NSString *profilePicture = [avatar objectForKey:@"Value"];
+        [dictionary setObject:profilePicture forKey:@"avatar"];
     }
     
     return dictionary;
