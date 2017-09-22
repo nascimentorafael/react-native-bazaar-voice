@@ -85,20 +85,22 @@ RCT_EXPORT_METHOD(submitReview:(NSDictionary *)review fromProduct:(NSString *)pr
     [bvReview addRatingQuestion:@"Width" value:width];
     [bvReview addAdditionalField:@"profilePicture" value:profilePicture];
     [bvReview submit:^(BVReviewSubmissionResponse * _Nonnull response) {
+        NSMutableDictionary *result = [NSMutableDictionary new];
         if (response.submissionId) {
-            NSMutableDictionary *result = [NSMutableDictionary new];
             [result setObject:response.submissionId forKey:@"submissionId"];
             [result setObject:[NSNumber numberWithBool:YES] forKey:@"success"];
-            resolve(@[result]);
+            resolve(result);
         } else {
-            reject(nil);
+            [result setObject:[NSNumber numberWithBool:NO] forKey:@"success"];
+            [result setObject:@"No submissionId found on response" forKey:@"error"];
+            resolve(result);
         }
     } failure:^(NSArray * _Nonnull errors) {
         NSError *error = errors[0];
         NSMutableDictionary *result = [NSMutableDictionary new];
         [result setObject:[NSNumber numberWithBool:NO] forKey:@"success"];
         [result setObject:error.localizedDescription forKey:@"error"];
-        resolve(@[result]);
+        resolve(result);
     }];
 }
 
