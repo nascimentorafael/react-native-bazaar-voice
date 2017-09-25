@@ -125,8 +125,8 @@ public class RNBazaarVoiceModule extends ReactContextBaseJavaModule {
         } catch (ParseException e) {
           extraName(reviewMap, "SubmissionTime", "date");
         }
-        reviewMap.put("profilePicture",
-            reviewMap.getJSONObject("AdditionalFields").getString("profilePicture"));
+        reviewMap.put("avatar",
+            reviewMap.getJSONObject("AdditionalFields").getString("Avatar"));
       } catch (JSONException e) {
         e.printStackTrace();
       }
@@ -202,21 +202,44 @@ public class RNBazaarVoiceModule extends ReactContextBaseJavaModule {
         .isRecommended(review.getBoolean("isRecommended"));
 
     final String[] additionalReviewIntProperties = new String[] {
-        "comfort", "size", "rating", "quality", "width"
+        "comfort", "size", "quality", "width"
     };
 
     for (String addRevKey : additionalReviewIntProperties) {
       previewSubmissionBuilder.addRatingQuestion(ucFirstLetter(addRevKey),
           review.getInt(addRevKey));
     }
+    previewSubmissionBuilder.addAdditionalField("Avatar", user.getString("profilePicture"));
     try {
       ReviewSubmissionResponse response =
           client.prepareCall(previewSubmissionBuilder.build()).loadSync();
       Log.w(TAG, "submitReview: " + gson.toJson(response));
-      promise.resolve(toReact(response));
+      if (!response.getHasErrors()) {
+        promise.resolve(toReact(new ReviewSubmitResponse("ok")));
+      } else {
+        promise.resolve(toReact(new ReviewSubmitResponse(new Exception(response.getErrors()
+            .get(0)
+            .getCode() + " " + response.getErrors().get(0).getMessage()))));
+      }
     } catch (BazaarException | JSONException e) {
       Log.e(TAG, "submitReview: ", e);
-      promise.reject(e);
+      promise.resolve(new ReviewSubmitResponse(e));
+    }
+  }
+
+  private class ReviewSubmitResponse {
+    public boolean success;
+    public String submissionId;
+    public String error;
+
+    public ReviewSubmitResponse(String submissionId) {
+      this.success = true;
+      this.submissionId = submissionId;
+    }
+
+    public ReviewSubmitResponse(Throwable t) {
+      this.success = false;
+      this.error = t.getMessage();
     }
   }
 }
