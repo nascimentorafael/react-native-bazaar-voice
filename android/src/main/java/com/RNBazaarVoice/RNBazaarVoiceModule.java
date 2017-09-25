@@ -125,8 +125,11 @@ public class RNBazaarVoiceModule extends ReactContextBaseJavaModule {
         } catch (ParseException e) {
           extraName(reviewMap, "SubmissionTime", "date");
         }
-        reviewMap.put("avatar",
-            reviewMap.getJSONObject("AdditionalFields").getString("Avatar"));
+        reviewMap.put("profilePicture",
+            reviewMap.getJSONObject("AdditionalFields").getJSONObject("Avatar").getString("Value"));
+        reviewMap.put("additionalFields", reviewMap.getJSONObject("AdditionalFields"));
+        reviewMap.getJSONObject("additionalFields")
+            .put("avatar", reviewMap.getString("profilePicture"));
       } catch (JSONException e) {
         e.printStackTrace();
       }
@@ -197,24 +200,26 @@ public class RNBazaarVoiceModule extends ReactContextBaseJavaModule {
         .userEmail(user.getString("email"))
         .sendEmailAlertWhenPublished(user.getBoolean("sendEmailAlertWhenPublished"))
         .title(review.getString("title"))
-        .reviewText("text")
+        .reviewText(review.getString("text"))
         .rating(review.getInt("rating"))
         .isRecommended(review.getBoolean("isRecommended"));
 
     final String[] additionalReviewIntProperties = new String[] {
-        "comfort", "size", "quality", "width"
+        "comfort", "size", "rating", "quality", "width"
     };
 
     for (String addRevKey : additionalReviewIntProperties) {
       previewSubmissionBuilder.addRatingQuestion(ucFirstLetter(addRevKey),
           review.getInt(addRevKey));
     }
+
     previewSubmissionBuilder.addAdditionalField("Avatar", user.getString("profilePicture"));
+
     try {
       ReviewSubmissionResponse response =
           client.prepareCall(previewSubmissionBuilder.build()).loadSync();
       Log.w(TAG, "submitReview: " + gson.toJson(response));
-      if (!response.getHasErrors()) {
+      if (response.getErrors().isEmpty()) {
         promise.resolve(toReact(new ReviewSubmitResponse("ok")));
       } else {
         promise.resolve(toReact(new ReviewSubmitResponse(new Exception(response.getErrors()
@@ -223,22 +228,27 @@ public class RNBazaarVoiceModule extends ReactContextBaseJavaModule {
       }
     } catch (BazaarException | JSONException e) {
       Log.e(TAG, "submitReview: ", e);
-      promise.resolve(new ReviewSubmitResponse(e));
+      try {
+        promise.resolve(toReact(new ReviewSubmitResponse(e)));
+      } catch (JSONException e1) {
+        e1.printStackTrace();
+        promise.reject(e1);
+      }
     }
   }
 
   private class ReviewSubmitResponse {
-    public boolean success;
+    public String success;
     public String submissionId;
     public String error;
 
     public ReviewSubmitResponse(String submissionId) {
-      this.success = true;
+      this.success = "1";
       this.submissionId = submissionId;
     }
 
     public ReviewSubmitResponse(Throwable t) {
-      this.success = false;
+      this.success = "0";
       this.error = t.getMessage();
     }
   }
