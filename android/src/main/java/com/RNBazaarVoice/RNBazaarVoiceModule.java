@@ -125,11 +125,11 @@ public class RNBazaarVoiceModule extends ReactContextBaseJavaModule {
         } catch (ParseException e) {
           extraName(reviewMap, "SubmissionTime", "date");
         }
-        reviewMap.put("profilePicture",
+        reviewMap.put("avatar",
             reviewMap.getJSONObject("AdditionalFields").getJSONObject("Avatar").getString("Value"));
         reviewMap.put("additionalFields", reviewMap.getJSONObject("AdditionalFields"));
         reviewMap.getJSONObject("additionalFields")
-            .put("avatar", reviewMap.getString("profilePicture"));
+            .put("avatar", reviewMap.getString("avatar"));
       } catch (JSONException e) {
         e.printStackTrace();
       }
