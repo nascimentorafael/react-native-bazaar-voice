@@ -119,6 +119,7 @@ public class RNBazaarVoiceModule extends ReactContextBaseJavaModule {
         extraName(reviewMap, "ProductId", "productId");
         extraName(reviewMap, "Title", "title");
         extraName(reviewMap, "ReviewText", "reviewText");
+        extraName(reviewMap, "Rating", "rating");
         try {
           reviewMap.put("date",
               simpleDateFormat.parse(reviewMap.getString("SubmissionTime")).toString());
