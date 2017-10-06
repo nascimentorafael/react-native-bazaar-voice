@@ -8,6 +8,9 @@ import com.bazaarvoice.bvandroidsdk.AuthorsResponse;
 import com.bazaarvoice.bvandroidsdk.BVConversationsClient;
 import com.bazaarvoice.bvandroidsdk.BVSDK;
 import com.bazaarvoice.bvandroidsdk.BazaarException;
+import com.bazaarvoice.bvandroidsdk.BulkRatingOptions;
+import com.bazaarvoice.bvandroidsdk.BulkRatingsRequest;
+import com.bazaarvoice.bvandroidsdk.BulkRatingsResponse;
 import com.bazaarvoice.bvandroidsdk.EqualityOperator;
 import com.bazaarvoice.bvandroidsdk.Review;
 import com.bazaarvoice.bvandroidsdk.ReviewOptions;
@@ -129,8 +132,7 @@ public class RNBazaarVoiceModule extends ReactContextBaseJavaModule {
         reviewMap.put("avatar",
             reviewMap.getJSONObject("AdditionalFields").getJSONObject("Avatar").getString("Value"));
         reviewMap.put("additionalFields", reviewMap.getJSONObject("AdditionalFields"));
-        reviewMap.getJSONObject("additionalFields")
-            .put("avatar", reviewMap.getString("avatar"));
+        reviewMap.getJSONObject("additionalFields").put("avatar", reviewMap.getString("avatar"));
       } catch (JSONException e) {
         e.printStackTrace();
       }
@@ -188,6 +190,22 @@ public class RNBazaarVoiceModule extends ReactContextBaseJavaModule {
     } catch (BazaarException | JSONException e) {
       Log.e(TAG, "getProductReviewsWithId: ", e);
       promise.reject(e);
+    }
+  }
+
+  @ReactMethod public void getProductsStats(
+      List<String> productIds, String locale, final Promise promise) {
+    BulkRatingsRequest request =
+        new BulkRatingsRequest.Builder(productIds, BulkRatingOptions.StatsType.All).addFilter(
+            BulkRatingOptions.Filter.ContentLocale,
+            EqualityOperator.EQ,
+            locale).build();
+    try {
+      BulkRatingsResponse response = client.prepareCall(request).loadSync();
+      Log.w(TAG, "getProductsReviews: " + gson.toJson(response));
+      promise.resolve(toReactArray(response.getResults()));
+    } catch (BazaarException | JSONException e) {
+      e.printStackTrace();
     }
   }
 

@@ -51,6 +51,15 @@ RCT_EXPORT_METHOD(getProductReviewsWithId:(NSString *)productId andLimit:(int)li
     }];
 }
 
+RCT_EXPORT_METHOD(getProductsStats:(NSArray *)productIds andLocale:(NSString*)locale withResolver:(RCTPromiseResolveBlock)resolve andRejecter:(RCTResponseSenderBlock)reject) {
+    BVBulkRatingsRequest* request = [[BVBulkRatingsRequest alloc] initWithProductIds:productIds statistics:BulkRatingsStatsTypeAll];
+    [request load:^(BVBulkRatingsResponse * _Nonnull response) {
+        resolve(response.results);
+    } failure:^(NSArray * _Nonnull errors) {
+        reject(errors);
+    }];
+}
+
 RCT_EXPORT_METHOD(submitReview:(NSDictionary *)review fromProduct:(NSString *)productId andUser:(NSDictionary *)user withResolver:(RCTPromiseResolveBlock)resolve andRejecter:(RCTResponseErrorBlock)reject) {
     NSString *nickname = [user objectForKey:@"nickname"];
     NSString *locale = [user objectForKey:@"locale"];
